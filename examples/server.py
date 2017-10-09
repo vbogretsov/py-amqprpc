@@ -12,12 +12,10 @@ class Serv:
 
 async def main():
     transport, protocol = await aioamqp.connect()
-    channel = await protocol.channel()
-    # channel.basic_qos(prefetch_count=prefetch_count, connection_global=False)
-    # await amqprpc.register_server(test, "test", channel)
-    await amqprpc.register_server(Serv(), "serv", channel)
-
-    # await channel.close()
+    codec = await amqprpc.server_codec(protocol, "serv")
+    codec.register(Serv())
+    # TODO(vbogretsov): handle close issue
+    # await codec.close()
     # await protocol.close()
     # transport.close()
 
