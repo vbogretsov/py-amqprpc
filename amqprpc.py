@@ -9,6 +9,70 @@ import counter
 import msgpack
 
 
+async def server_codec(connection, name, formatter):
+    """Create RPC server codec.
+
+    The codec can be used to register a service which can be a class or a
+    function. The function or a class method should accept only 1 argument to
+    be a service endpoint. This approach was choosen to mimic golang net/rpc
+    library for easy integration with it.
+
+    Args:
+        connection: AMQP connection.
+        name: RPC server name.
+        formatter: Contains methods pack(data) and unpack(data) to translate
+            a python object to/from bynary representation.
+
+    Returns:
+        RPC server codec.
+    """
+    channel = await connection.channel()
+    codec = _ServerCodec(channel)
+
+    async def onrequest(channel, body, envelope, properties):
+        response = await _get_response(codec.callables, body, properties,
+                                       formatter)
+        await channel.basic_publish(**response)
+
+    await channel.queue_declare(queue_name=name)
+    await channel.basic_consume(onrequest, no_ack=True, queue_name=name)
+
+    return codec
+
+
+async def client_codec(connection, name, formatter):
+    """Create RPC client codec.
+
+    The codec can be used to create RPC clients.
+
+    Args:
+        connection: AMQP connection.
+        name: RPC server name.
+        formatter: Contains methods pack(data) and unpack(data) to translate
+            a python object to/from bynary representation.
+
+    Returns:
+        RPC client codec.
+
+    """
+    channel = await connection.channel()
+    queue = await channel.queue_declare("")
+    codec = _ClientCodec(channel, name, queue["queue"], formatter)
+
+    async def onresponse(channel, body, envelope, properties):
+        request = codec.reqgen.requests.pop(int(properties.message_id), None)
+        if request:
+            request.response.headers = properties.headers or {}
+            if "error" not in request.response.headers:
+                request.response.body = formatter.unpack(body)
+            request.event.set()
+
+    await channel.basic_consume(
+        onresponse, no_ack=True, queue_name=queue["queue"])
+
+    return codec
+
+
 async def _get_response(callables, body, properties, formatter):
     if properties.reply_to is None:
         raise ValueError("properties.reply_to cannot be None")
@@ -40,45 +104,14 @@ async def _get_response(callables, body, properties, formatter):
             "error": "unknown function {0}".format(properties.reply_to)
         }
 
-    response["payload"] = formatter.pack(result or {})
+    response["payload"] = formatter.pack(result)
     return response
 
 
-async def server_codec(connection, name, formatter):
-    channel = await connection.channel()
-    codec = _ServerCodec(channel)
-
-    async def onrequest(channel, body, envelope, properties):
-        response = await _get_response(codec.callables, body, properties,
-                                       formatter)
-        await channel.basic_publish(**response)
-
-    await channel.queue_declare(queue_name=name)
-    await channel.basic_consume(onrequest, no_ack=True, queue_name=name)
-
-    return codec
-
-
-async def client_codec(connection, name, formatter):
-    channel = await connection.channel()
-    queue = await channel.queue_declare("")
-    codec = _ClientCodec(channel, name, queue["queue"], formatter)
-
-    async def onresponse(channel, body, envelope, properties):
-        request = codec.reqgen.requests.pop(int(properties.message_id), None)
-        if request:
-            request.response.headers = properties.headers or {}
-            if "error" not in request.response.headers:
-                request.response.body = formatter.unpack(body)
-            request.event.set()
-
-    await channel.basic_consume(
-        onresponse, no_ack=True, queue_name=queue["queue"])
-
-    return codec
-
-
 class MsgPack:
+    """Represents msgpack format provider.
+    """
+
     @staticmethod
     def pack(data):
         return msgpack.packb(data)
@@ -89,6 +122,9 @@ class MsgPack:
 
 
 class Json:
+    """Represents json format provider.
+    """
+
     @staticmethod
     def pack(data):
         return json.dumps(data)
@@ -161,6 +197,7 @@ class _ServerCodec(_Codec):
         methods = (i for i in dir(server) if callable(getattr(server, i)))
 
         for method in methods:
+            # TODO(vbogretsov): check function is callable and has 1 argument.
             if not method.startswith("_"):
                 fullname = "{0}.{1}".format(name, method)
                 self.callables[fullname] = getattr(server, method)
@@ -213,7 +250,7 @@ class _Client:
                 payload=self.formatter.pack(args),
                 properties=properties)
 
-            await asyncio.wait_for(request.event.wait(), timeout=2)
+            await asyncio.wait_for(request.event.wait(), timeout=60)
 
             if "error" in request.response.headers:
                 raise RPCError(request.response.headers["error"])
