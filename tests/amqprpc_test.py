@@ -12,8 +12,8 @@ ROUTING = "amqptest"
 
 class Serv:
 
-    def mul(self, a, b):
-        return {"a": a, "b": b, "mul": a * b}
+    def mul(self, args):
+        return {"a": args["a"], "b": args["b"], "mul": args["a"] * args["b"]}
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def amqpservers(request, amqpconnection, event_loop):
     codecs = []
     for i in range(request.config.option.nserver):
         codec = event_loop.run_until_complete(
-            amqprpc.server_codec(amqpconnection, ROUTING))
+            amqprpc.server_codec(amqpconnection, ROUTING, amqprpc.MsgPack))
         codec.register(Serv())
         codecs.append(codec)
 
@@ -60,7 +60,7 @@ def amqpclients(request, amqpconnection, amqpservers, event_loop):
     clients = []
     for i in range(request.config.option.nclient):
         codec = event_loop.run_until_complete(
-            amqprpc.client_codec(amqpconnection, ROUTING))
+            amqprpc.client_codec(amqpconnection, ROUTING, amqprpc.MsgPack))
         codecs.append(codec)
         clients.append(codec.client("Serv"))
 
@@ -77,7 +77,8 @@ async def test_ncalls(request, amqpclients, rng, event_loop):
     tasks = []
     for i in range(request.config.option.ncalls):
         for client in amqpclients:
-            tasks.append(event_loop.create_task(client.mul(rng(), rng())))
+            args = {"a": rng(), "b": rng()}
+            tasks.append(event_loop.create_task(client.mul(args)))
     for task in tasks:
         res = await task
         assert res == {"a": res["a"], "b": res["b"], "mul": res["a"] * res["b"]}
