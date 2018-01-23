@@ -9,6 +9,8 @@ import amqprpc
 
 ROUTING = "amqptest"
 
+# TODO(vbogretsov): add negative test cases.
+
 
 class Serv:
 
