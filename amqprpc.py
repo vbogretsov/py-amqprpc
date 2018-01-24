@@ -19,7 +19,8 @@ async def server_codec(connection, name, formatter):
 
     Args:
         connection: AMQP connection.
-        name: RPC server name.
+        name: Codec name is used for routing messages to services registered
+            in the codec.
         formatter: Contains methods pack(data) and unpack(data) to translate
             a python object to/from bynary representation.
 
@@ -47,7 +48,8 @@ async def client_codec(connection, name, formatter):
 
     Args:
         connection: AMQP connection.
-        name: RPC server name.
+        name: Codec name is used for routing messages to services registered
+            in the codec.
         formatter: Contains methods pack(data) and unpack(data) to translate
             a python object to/from bynary representation.
 
@@ -168,6 +170,7 @@ class _Request:
         self.response = _Response()
 
 
+# TODO(vbogretsov): consider using of conext manager interface.
 class _Codec:
     """Base codec.
     """
