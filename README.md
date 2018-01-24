@@ -13,7 +13,7 @@ for more details.
 
 A python class or function can be used as RPC server. For this purpose it
 should be registered using an instance of `server_codec` (the name comes from
-go's net/rpc library).
+golang net/rpc library).
 
 Let's assume we have the following python class:
 
@@ -35,7 +35,7 @@ async def example_server(**amqp_settings):
     codec = await amqprpc.server_codec(protocol, "testrpc", amqprpc.Json)
     codec.register(Server())
     # Now server is regisered and can accept requests to the method `mul`.
-    # Codec should be closes before function exits.
+    # Codec should be closed before function exits.
 ```
 
 **NOTE:** this example uses the library [aioamqp](https://github.com/Polyconseil/aioamqp)
@@ -44,7 +44,7 @@ will not be installed as `py-amqprpc` dependency.
 
 Here `testrpc` is the routing key that will be used for routing requests to
 services registered in the codec. The parameter `amqprpc.Json` specifies that
-messages should be encoded in JSON. See [Messages format] (### Messages format)
+messages should be encoded in JSON. See [Messages format](### Messages format)
 for more details.
 
 When a class instance is registered all its public methods will be available
