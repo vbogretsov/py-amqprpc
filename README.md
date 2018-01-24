@@ -44,7 +44,7 @@ will not be installed as `py-amqprpc` dependency.
 
 Here `testrpc` is the routing key that will be used for routing requests to
 services registered in the codec. The parameter `amqprpc.Json` specifies that
-messages should be encoded in JSON. See [Messages format](### Messages format)
+messages should be encoded in JSON. See [Messages format](https://github.com/vbogretsov/py-amqprpc#messages-format)
 for more details.
 
 When a class instance is registered all its public methods will be available
