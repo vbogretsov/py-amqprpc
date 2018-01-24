@@ -28,6 +28,8 @@ And we are going to use it as RPC server. To do that we should connect AMQP
 broker, create server codec and register instance of this class in the codec.
 
 ```python
+import aioamqp
+
 async def example_server(**amqp_settings):
     transport, protocol = await aioamqp.connect(**amqp_settings)
     codec = await amqprpc.server_codec(protocol, "testrpc", amqprpc.Json)
@@ -35,6 +37,10 @@ async def example_server(**amqp_settings):
     # Now server is regisered and can accept requests to the method `mul`.
     # Codec should be closes before function exits.
 ```
+
+**NOTE:** this example uses the library [aioamqp](https://github.com/Polyconseil/aioamqp)
+but `py-amqprpc` can work with other async AMQP implementation so `aioamqp`
+will not be installed as `py-amqprpc` dependency.
 
 Here `testrpc` is the routing key that will be used for routing requests to
 services registered in the codec. The parameter `amqprpc.Json` specifies that
