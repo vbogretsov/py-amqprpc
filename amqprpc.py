@@ -196,14 +196,14 @@ class _ServerCodec(_Codec):
 
         if callable(server):
             self.callables[name] = server
-        else:
-            for attrname in dir(server):
-                if not attrname.startswith("_"):
-                    attr = getattr(server, attrname)
-                    # TODO(vbogretsov): check function has 1 argument.
-                    if callable(attr):
-                        fullname = "{0}.{1}".format(name, attrname)
-                        self.callables[fullname] = attr
+
+        for attrname in dir(server):
+            if not attrname.startswith("_"):
+                attr = getattr(server, attrname)
+                # TODO(vbogretsov): check function has 1 argument.
+                if callable(attr):
+                    fullname = "{0}.{1}".format(name, attrname)
+                    self.callables[fullname] = attr
 
 
 class _ClientCodec(_Codec):
