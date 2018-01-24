@@ -55,7 +55,7 @@ more easy.
 ### Client
 
 To make requests to RPC server we have to create a client instance. Let's
-assume we should like to the remote method `mul` of the class `Server` from the
+assume we would like to call the remote method `mul` of the class `Server` from the
 previous example. To do that we should connect AMQP broker, create client codec
 and create a client - proxy for the remote instance of the `Server` class.
 
